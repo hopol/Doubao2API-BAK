@@ -1,0 +1,1068 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<link rel="icon" href="/favicon.ico" sizes="16x16 24x24 32x32 48x48 64x64 128x128 256x256" type="image/x-icon">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png" sizes="180x180">
+<title>Doubao2API 控制台</title>
+<style>
+  :root{
+    --bg:#0d1117; --bg2:#111722; --side:#0b0f16; --panel:#151b26; --panel2:#1b2331;
+    --line:#263041; --line2:#334155; --fg:#e6edf7; --dim:#93a4bb; --faint:#6b7c93;
+    --accent:#4f8cff; --accent2:#7aa8ff; --ok:#3ecf8e; --warn:#f0b429; --err:#f2555a;
+    --shadow:0 16px 50px rgba(0,0,0,.45); --radius:12px;
+  }
+  html[data-theme="light"]{
+    --bg:#f4f7fb; --bg2:#eef3fa; --side:#e8eef7; --panel:#ffffff; --panel2:#f3f7fd;
+    --line:#dbe4f0; --line2:#c8d5e6; --fg:#152033; --dim:#5d6e85; --faint:#7d8da3;
+    --accent:#1f6feb; --accent2:#0b5cd6; --ok:#0f9d67; --warn:#b87700; --err:#cf3340;
+    --shadow:0 16px 50px rgba(40,60,90,.14);
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.55 ui-sans-serif,system-ui,"Segoe UI",Roboto,"Helvetica Neue",Arial,"PingFang SC","Microsoft YaHei",sans-serif}
+  a{color:var(--accent2);text-decoration:none}
+  .app{display:flex;min-height:100vh}
+  .sidebar{width:226px;flex:0 0 226px;background:var(--side);border-right:1px solid var(--line);
+    display:flex;flex-direction:column;position:sticky;top:0;height:100vh;padding:14px 12px}
+  .brand{display:flex;align-items:center;gap:10px;padding:6px 8px 16px}
+  .brand-mark{width:30px;height:30px;border-radius:9px;background:linear-gradient(135deg,var(--accent),#7b5cff);
+    display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:14px;box-shadow:0 6px 18px rgba(79,140,255,.35)}
+  .brand-name{font-weight:700;font-size:14px;letter-spacing:.2px}
+  .brand-sub{font-size:11px;color:var(--dim)}
+  .nav{display:flex;flex-direction:column;gap:4px;margin-top:4px}
+  .nav button{display:flex;align-items:center;gap:10px;width:100%;text-align:left;background:transparent;border:1px solid transparent;
+    color:var(--dim);padding:9px 10px;border-radius:9px;cursor:pointer;font:inherit;font-size:13px}
+  .nav button:hover{background:var(--panel2);color:var(--fg)}
+  .nav button.on{background:var(--panel2);border-color:var(--line);color:var(--fg)}
+  .nav .ico{width:18px;height:18px;display:inline-flex;align-items:center;justify-content:center;color:var(--faint);font-size:14px}
+  /* 侧边栏角标：待确认签到数量（warn 色），0 时整体隐藏 */
+  .nav button .count{margin-left:auto;min-width:18px;height:18px;padding:0 6px;border-radius:999px;display:inline-flex;
+    align-items:center;justify-content:center;font-size:11px;font-weight:600;font-variant-numeric:tabular-nums;
+    background:color-mix(in srgb,var(--warn) 18%,transparent);color:var(--warn);
+    border:1px solid color-mix(in srgb,var(--warn) 45%,var(--line))}
+  .nav button .count[hidden]{display:none}
+  .nav button.on .ico{color:var(--accent)}
+  .side-foot{margin-top:auto;padding:12px 8px 4px;border-top:1px solid var(--line);display:flex;flex-direction:column;gap:6px}
+  .side-meta{font-size:11px;color:var(--faint)}
+  .main{flex:1;min-width:0;display:flex;flex-direction:column}
+  .topbar{display:flex;align-items:center;gap:10px;padding:12px 20px;background:color-mix(in srgb,var(--bg) 88%,transparent);
+    backdrop-filter:blur(8px);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:6}
+  .topbar .sp{flex:1}
+  .content{padding:20px;max-width:1400px;width:100%;margin:0 auto}
+  /* 页签：只有 .on 的 <section> 显示。此前缺少这两条规则，导致 8 个页面全部堆叠，
+     点击侧栏只切换 class 而没有视觉变化（侧栏按钮"点了没反应"的根因）。 */
+  .tab{display:none}
+  .tab.on{display:block}
+  .page-head{display:flex;align-items:flex-end;gap:14px;flex-wrap:wrap;margin-bottom:16px}
+  .page-head h1{font-size:20px;margin:0;letter-spacing:.2px}
+  .page-head p{margin:4px 0 0;color:var(--dim);font-size:12.5px}
+  .actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  :focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:6px}
+  .badge{display:inline-flex;align-items:center;gap:6px;padding:3px 9px;border-radius:999px;border:1px solid var(--line);
+    background:var(--panel2);color:var(--dim);font-size:11.5px;white-space:nowrap}
+  .badge.ok{color:var(--ok);border-color:color-mix(in srgb,var(--ok) 45%,var(--line))}
+  .badge.err{color:var(--err);border-color:color-mix(in srgb,var(--err) 45%,var(--line))}
+  .badge.warn{color:var(--warn);border-color:color-mix(in srgb,var(--warn) 45%,var(--line))}
+  .dot{width:7px;height:7px;border-radius:50%;background:currentColor}
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:16px}
+  .kpi{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:14px 16px}
+  .kpi .k{font-size:11.5px;color:var(--dim);text-transform:uppercase;letter-spacing:.5px}
+  .kpi .v{font-size:23px;font-weight:650;margin-top:5px;line-height:1.2}
+  .kpi .s{font-size:11.5px;color:var(--faint);margin-top:3px}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);margin-bottom:16px;overflow:hidden}
+  .panel-head{display:flex;align-items:center;gap:12px;padding:13px 16px;border-bottom:1px solid var(--line)}
+  .panel-head h2{font-size:13px;margin:0;color:var(--dim);font-weight:650;text-transform:uppercase;letter-spacing:.6px}
+  .panel-head .actions{margin-left:auto}
+  .panel-body{padding:14px 16px}
+  .table-wrap{overflow:auto}
+  table{width:100%;border-collapse:collapse;font-size:12.8px}
+  th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:middle}
+  th{color:var(--dim);font-weight:600;font-size:11.5px;text-transform:uppercase;letter-spacing:.4px;white-space:nowrap;background:color-mix(in srgb,var(--panel2) 55%,transparent)}
+  tbody tr:hover{background:var(--panel2)}
+  tr:last-child td{border-bottom:none}
+  .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12px}
+  .muted{color:var(--dim)}
+  .faint{color:var(--faint)}
+  .trunc{max-width:320px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .nowrap{white-space:nowrap}
+  .btn{background:var(--panel2);border:1px solid var(--line);color:var(--fg);padding:7px 11px;border-radius:8px;cursor:pointer;font:inherit;font-size:12.5px;line-height:1.3}
+  .btn:hover{border-color:var(--line2);background:color-mix(in srgb,var(--panel2) 70%,var(--line))}
+  .btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+  .btn.primary:hover{background:var(--accent2);border-color:var(--accent2)}
+  .btn.danger{color:var(--err)}
+  .btn.ghost{background:transparent}
+  .btn.sm{padding:4px 8px;font-size:11.5px;border-radius:7px}
+  .btn:disabled{opacity:.55;cursor:not-allowed}
+  .row{display:flex;gap:9px;flex-wrap:wrap;align-items:center}
+  .row.tight{gap:6px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:0 14px}
+  label{display:block;font-size:11.5px;color:var(--dim);margin:12px 0 5px}
+  input,select,textarea{background:var(--panel2);border:1px solid var(--line);color:var(--fg);padding:7px 9px;border-radius:8px;
+    font:inherit;font-size:12.5px;min-width:0;width:100%}
+  input[type=checkbox]{width:auto}
+  input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent)}
+  textarea{min-height:96px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:11.5px;resize:vertical}
+  .hint{color:var(--faint);font-size:11.5px;line-height:1.5;margin-top:8px}
+  .w-120{width:120px}.w-160{width:160px}.w-200{width:200px}.w-260{width:260px}.w-320{width:320px}
+  .hidden{display:none!important}
+  .toast{position:fixed;right:18px;bottom:18px;z-index:50;background:var(--panel2);border:1px solid var(--line);
+    border-left:3px solid var(--accent);padding:10px 14px;border-radius:9px;max-width:440px;box-shadow:var(--shadow);
+    display:none;white-space:pre-wrap;word-break:break-word;font-size:12.5px}
+  .toast.show{display:block}
+  .toast.err{border-left-color:var(--err)}
+  .toast.ok{border-left-color:var(--ok)}
+  .toast.warn{border-left-color:var(--warn)}
+  code{background:var(--panel2);padding:1px 5px;border-radius:5px;font-size:11.5px}
+  .kv{display:grid;grid-template-columns:120px 1fr;gap:7px 12px;font-size:12.5px}
+  .kv .k{color:var(--dim)}
+  .scrim{display:none}
+  .only-mobile{display:none}
+  @media (max-width: 900px){
+    .sidebar{position:fixed;left:0;top:0;bottom:0;z-index:20;transform:translateX(-100%);transition:transform .18s ease;box-shadow:var(--shadow)}
+    .sidebar.open{transform:none}
+    .only-mobile{display:inline-flex}
+    .scrim.show{display:block;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:15}
+    .content{padding:14px}
+    .topbar{padding:10px 14px}
+    .kpi .v{font-size:20px}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar" id="sidebar">
+    <div class="brand">
+      <div class="brand-mark">D</div>
+      <div>
+        <div class="brand-name">Doubao2API</div>
+        <div class="brand-sub">管理控制台</div>
+      </div>
+    </div>
+    <nav class="nav" id="nav">
+      <button data-tab="overview" class="on"><span class="ico">▦</span>概览</button>
+      <button data-tab="accounts"><span class="ico">◉</span>账号池<span class="count" data-pending-checkin hidden></span></button>
+      <button data-tab="keys"><span class="ico">⚿</span>密钥</button>
+      <button data-tab="models"><span class="ico">✦</span>模型与技能</button>
+      <button data-tab="rewards"><span class="ico">◎</span>积分与任务<span class="count" data-pending-checkin hidden></span></button>
+      <button data-tab="conversations"><span class="ico">▤</span>会话</button>
+      <button data-tab="logs"><span class="ico">☰</span>日志</button>
+      <button data-tab="settings"><span class="ico">⚙</span>设置</button>
+    </nav>
+    <div class="side-foot">
+      <span id="health" class="badge"><i class="dot"></i><span>检测中…</span></span>
+      <span id="upstream" class="side-meta">上游 …</span>
+    </div>
+  </aside>
+  <div class="scrim" id="scrim"></div>
+  <div class="main">
+    <header class="topbar">
+      <button class="btn ghost only-mobile" id="navToggle">☰</button>
+      <span class="sp"></span>
+      <span id="healthTop" class="badge"><i class="dot"></i><span>检测中…</span></span>
+      <input id="pw" type="password" placeholder="管理密码（可选）" autocomplete="current-password" class="w-200">
+      <button class="btn sm" id="savePw" title="记住管理密码（仅本机浏览器）">记住</button>
+      <button class="btn sm" id="themeToggle" title="切换主题">☾</button>
+      <button class="btn primary sm" id="refresh">刷新</button>
+    </header>
+    <main class="content">
+
+      <section id="tab-overview" class="tab on">
+        <div class="page-head">
+          <div><h1>概览</h1><p>账号池健康、用量统计、模型目录与上游版本</p></div>
+          <div class="actions"><button class="btn" id="refreshAll">刷新全部</button></div>
+        </div>
+        <div class="cards" id="kpis"></div>
+        <div id="healthWarn" class="hint" style="display:none"></div>
+        <div class="panel">
+          <div class="panel-head"><h2>运行状态</h2><div class="actions"><span id="runtimeMeta" class="muted mono"></span></div></div>
+          <div class="panel-body"><div class="kv" id="runtimeBody"></div></div>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><h2>模型目录</h2><div class="actions"><span id="modelsMeta" class="muted mono"></span></div></div>
+          <div class="table-wrap"><table><thead><tr><th>ID</th><th>名称</th><th>档位</th><th>技能</th><th>上下文</th><th>说明</th></tr></thead><tbody id="models"></tbody></table></div>
+        </div>
+      </section>
+
+      <section id="tab-accounts" class="tab">
+        <div class="page-head">
+          <div><h1>账号池</h1><p>以上游 Cookie 为凭据；支持桌面端导入、扫码与手工录入</p></div>
+          <div class="actions">
+            <button class="btn" id="importLocal">导入本机桌面端</button>
+            <button class="btn" id="qrLogin">扫码登录</button>
+            <button class="btn" id="probeAll">全部探活</button>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><h2>手工录入</h2></div>
+          <div class="panel-body">
+            <div class="row">
+              <input id="manualName" class="w-160" placeholder="账号名称（可选）">
+              <input id="manualCookies" class="w-320" placeholder="Cookie 串：sessionid=…; sid_guard=…; ttwid=…">
+            </div>
+            <div class="row" style="margin-top:8px">
+              <input id="manualDevice" class="w-160" placeholder="device_id（可选）">
+              <input id="manualWeb" class="w-160" placeholder="web_id（可选）">
+              <input id="manualIid" class="w-160" placeholder="iid（可选）">
+              <input id="manualAppId" class="w-120" placeholder="app_id" value="1044603">
+              <button class="btn primary" id="addManual">添加账号</button>
+            </div>
+            <div class="hint">填写真实 <code>device_id</code> 后 <code>fp</code> 会自动设为 <code>verify_&lt;device_id&gt;</code>。主端 Web Cookie 可把 app_id 改为 582478。</div>
+          </div>
+        </div>
+        <div class="panel" id="qrPanel" style="display:none">
+          <div class="panel-head"><h2>扫码登录</h2><div class="actions"><button class="btn sm danger" id="qrCancel">取消</button></div></div>
+          <div class="panel-body row">
+            <img id="qrImg" alt="二维码" style="width:200px;height:200px;background:#fff;border-radius:10px;padding:6px">
+            <div><div id="qrStatus" class="muted">等待扫码…</div><div class="hint">使用「抖音 APP」扫码，并在手机上确认。确认后会自动换取 Cookie 并入库。</div></div>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><h2>账号列表</h2><div class="actions"><span id="accountsMeta" class="muted mono"></span></div></div>
+          <div class="table-wrap"><table><thead><tr><th>名称</th><th>来源</th><th>会话</th><th>状态</th><th>设备</th><th>最近签到</th><th>待确认签到</th><th>失败</th><th>最近使用</th><th>操作</th></tr></thead><tbody id="accounts"></tbody></table></div>
+        </div>
+      </section>
+
+      <section id="tab-keys" class="tab">
+        <div class="page-head"><div><h1>API 密钥</h1><p>未签发密钥时 <code>/v1/*</code> 允许无密钥调用；签发后强制校验</p></div></div>
+        <div class="panel"><div class="panel-body"><div class="row">
+          <input id="keyName" class="w-200" placeholder="密钥备注（可选）">
+          <button class="btn primary" id="addKey">创建密钥</button>
+        </div><div class="hint">完整密钥只在创建时返回一次，请立即保存。控制台可用管理密码访问 <code>/v1/*</code>。</div></div></div>
+        <div class="panel">
+          <div class="panel-head"><h2>密钥列表</h2></div>
+          <div class="table-wrap"><table><thead><tr><th>密钥</th><th>备注</th><th>状态</th><th>请求数</th><th>创建时间</th><th>最近使用</th><th>操作</th></tr></thead><tbody id="keys"></tbody></table></div>
+        </div>
+      </section>
+
+      <section id="tab-models" class="tab">
+        <div class="page-head"><div><h1>模型与技能</h1><p>技能清单来自上游 <code>/samantha/skill/list</code>；技能模型会自动套用默认提示词</p></div>
+          <div class="actions"><button class="btn" id="refreshSkills">刷新技能</button></div></div>
+        <div class="panel"><div class="panel-head"><h2>模型</h2></div>
+          <div class="table-wrap"><table><thead><tr><th>ID</th><th>名称</th><th>档位</th><th>技能</th><th>上下文</th><th>说明</th></tr></thead><tbody id="modelsTab"></tbody></table></div></div>
+        <div class="panel"><div class="panel-head"><h2>技能</h2><div class="actions"><span id="skillsMeta" class="muted mono"></span></div></div>
+          <div class="table-wrap"><table><thead><tr><th>类型</th><th>名称</th><th>别名</th><th>默认提示词</th><th>对应模型</th></tr></thead><tbody id="skills"></tbody></table></div></div>
+      </section>
+
+      <section id="tab-rewards" class="tab">
+        <div class="page-head"><div><h1>积分与任务</h1><p>签到、积分流水、每日任务与自动领取；默认不会伪造任务完成</p></div>
+          <div class="actions">
+            <button class="btn" id="refreshRewards">刷新</button>
+            <button class="btn primary" id="doCheckin">每日签到</button>
+            <button class="btn" id="retryCheckin" title="对「确认中」的签到立刻复查一次（需在设置中开启复查）">催办签到</button>
+          </div></div>
+        <div class="cards" id="rewardKpis"></div>
+        <div class="panel"><div class="panel-head"><h2>积分</h2><div class="actions"><button class="btn sm" id="loadHistory">积分流水</button></div></div>
+          <div class="panel-body"><div id="creditBody" class="muted">加载中…</div></div>
+        </div>
+        <div class="panel"><div class="panel-head"><h2>每日任务</h2><div class="actions">
+            <button class="btn sm" id="claimCompleted">领取已完成</button>
+            <button class="btn sm primary" id="runTasks">自动做任务</button>
+            <input id="runTaskLimit" type="number" min="1" max="10" value="3" class="w-120" title="本次最多尝试任务数">
+          </div></div>
+          <div class="table-wrap"><table><thead><tr><th>任务</th><th>标题</th><th>状态</th><th>奖励</th><th>可领取</th><th>操作</th></tr></thead><tbody id="tasks"></tbody></table></div>
+        </div>
+        <div class="panel"><div class="panel-head"><h2>里程碑</h2><div class="actions"><span id="milestoneMeta" class="muted mono"></span></div></div>
+          <div class="table-wrap"><table><thead><tr><th>里程碑</th><th>阈值</th><th>状态</th><th>奖励</th><th>可领取</th><th>操作</th></tr></thead><tbody id="milestones"></tbody></table></div>
+        </div>
+      </section>
+
+      <section id="tab-conversations" class="tab">
+        <div class="page-head"><div><h1>会话</h1><p>上游会话列表；支持重命名、置顶、归档与清空消息</p></div>
+          <div class="actions">
+            <select id="convLimit" class="w-120"><option value="20">20 条</option><option value="50">50 条</option></select>
+            <button class="btn" id="refreshConvs">刷新</button>
+          </div></div>
+        <div class="panel"><div class="panel-head"><h2>会话列表</h2><div class="actions"><span id="convMeta" class="muted mono"></span></div></div>
+          <div class="table-wrap"><table><thead><tr><th>ID</th><th>名称</th><th>类型</th><th>更新时间</th><th>置顶</th><th>操作</th></tr></thead><tbody id="conversations"></tbody></table></div>
+          <div class="panel-body row"><button class="btn sm" id="convPrev">上一页</button><button class="btn sm" id="convNext">下一页</button></div>
+        </div>
+      </section>
+
+      <section id="tab-logs" class="tab">
+        <div class="page-head"><div><h1>请求日志</h1><p>只记录元信息（模型、耗时、长度），不落对话内容</p></div>
+          <div class="actions">
+            <input id="logModel" class="w-160" placeholder="过滤模型">
+            <input id="logStatus" class="w-120" placeholder="状态码">
+            <select id="logLimit" class="w-120"><option value="100">100 条</option><option value="500">500 条</option><option value="0">全部</option></select>
+            <button class="btn" id="logLive" aria-pressed="false">实时</button>
+            <button class="btn" id="reloadLogs">刷新</button>
+            <button class="btn danger" id="clearLogs">清空</button>
+          </div></div>
+        <div class="panel"><div class="panel-head"><h2>日志</h2><div class="actions"><span id="logsMeta" class="muted mono"></span></div></div>
+          <div class="table-wrap"><table><thead><tr><th>时间</th><th>模型</th><th>流式</th><th>状态</th><th>耗时</th><th>入/出</th><th>账号</th><th>密钥</th><th>错误</th></tr></thead><tbody id="logs"></tbody></table></div>
+        </div>
+      </section>
+
+      <section id="tab-settings" class="tab">
+        <div class="page-head"><div><h1>设置</h1><p>运行参数、模型别名与自动任务开关</p></div>
+          <div class="actions"><button class="btn primary" id="saveSettings">保存设置</button><button class="btn danger" id="clearStats">重置统计</button></div></div>
+        <div class="panel"><div class="panel-head"><h2>运行参数</h2></div><div class="panel-body">
+          <div class="grid">
+            <div><label>请求超时（秒）</label><input id="sTimeout" type="number" min="1"></div>
+            <div><label>最大重试次数</label><input id="sRetries" type="number" min="1"></div>
+            <div><label>日志保留条数</label><input id="sLogKeep" type="number" min="1"></div>
+            <div><label>总预算（秒，含重试）</label><input id="sOverall" type="number" min="1"></div>
+            <div><label>单账号并发上限</label><input id="sConcurrency" type="number" min="0"></div>
+            <div><label>按密钥限流（次/分钟，0=不限）</label><input id="sRateLimit" type="number" min="0"></div>
+            <div><label>Cookie 到期预警（天）</label><input id="sWarnDays" type="number" min="1"></div>
+            <div><label>CORS 允许来源（逗号分隔，留空=仅本机）</label><input id="sCors" placeholder="http://192.168.1.10:8080"></div>
+            <div><label>可信代理网段（CIDR，逗号分隔）</label><input id="sProxies" placeholder="172.17.0.0/16"></div>
+            <div><label>工具字段策略（tools）</label>
+              <select id="sTools"><option value="reject">拒绝（422，推荐）</option><option value="ignore">忽略</option></select></div>
+            <div><label>管理面来源</label>
+              <label class="row" style="margin:0"><input type="checkbox" id="sLoopback"> 仅允许本机直连（admin_loopback_only）</label></div>
+          </div>
+          <div class="hint">容器 / 反向代理部署时需要关闭「仅本机直连」，并填写可信代理网段；否则管理接口不可达，且带 X-Forwarded-For 的请求不会被当作本机。</div>
+        </div></div>
+        <div class="panel"><div class="panel-head"><h2>自动任务</h2></div><div class="panel-body">
+          <div class="row">
+            <label class="row" style="margin:0"><input type="checkbox" id="sAutoCheckin"> 每日自动签到</label>
+            <label class="row" style="margin:0"><input type="checkbox" id="sAutoClaim"> 自动领取已完成奖励</label>
+            <label class="row" style="margin:0"><input type="checkbox" id="sAutoTasks"> 自动尝试做任务</label>
+            <label class="row" style="margin:0"><input type="checkbox" id="sRetryCheckin"> 待确认签到每小时复查</label>
+            <div><label style="margin:0">每日任务上限</label><input id="sTaskLimit" type="number" min="0" max="10" class="w-120"></div>
+          </div>
+          <div class="hint">自动执行默认关闭。开启后后台每 30 分钟检查一次：签到按天幂等；任务只使用上游推荐提示词，失败会记录并跳过；完成后自动清空并归档会话。</div>
+        </div></div>
+        <div class="panel"><div class="panel-head"><h2>模型别名</h2></div><div class="panel-body">
+          <label>JSON 映射（如 <code>{"gpt-4o":"doubao"}</code>）</label>
+          <textarea id="sAliases" spellcheck="false"></textarea>
+        </div></div>
+        <div class="panel"><div class="panel-head"><h2>管理密码</h2></div><div class="panel-body">
+          <label>留空表示不修改；密码只保存 PBKDF2 哈希，且仅用于管理接口（不能调用 /v1/*）</label>
+          <input id="sPw" type="password" class="w-260" placeholder="不修改请留空">
+        </div></div>
+      </section>
+
+    </main>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+  "use strict";
+  var $ = function(s){ return document.querySelector(s); };
+  var $$ = function(s){ return Array.prototype.slice.call(document.querySelectorAll(s)); };
+  var S = { state:null, skills:[], credits:null, tasks:null, convOffset:0, active:"overview", qrTimer:null, logTimer:null };
+
+  function toast(msg, kind){
+    var t = $("#toast");
+    t.textContent = msg;
+    t.className = "toast show " + (kind || "");
+    clearTimeout(toast._t);
+    toast._t = setTimeout(function(){ t.className = "toast"; }, 5000);
+  }
+  function pw(){ return $("#pw").value.trim(); }
+  function api(path, opts){
+    opts = opts || {};
+    var h = { "Content-Type": "application/json" };
+    if (pw()) h["X-Admin-Password"] = pw();
+    return fetch(path, {
+      method: opts.method || "GET",
+      headers: h,
+      body: opts.body !== undefined ? JSON.stringify(opts.body) : undefined
+    }).then(function(r){
+      return r.text().then(function(txt){
+        var j = null;
+        try { j = JSON.parse(txt); } catch(e){}
+        if (!r.ok) {
+          var m = (j && j.error && j.error.message) || (j && (j.message || j.msg)) || txt || ("HTTP " + r.status);
+          var err = new Error(m); err.status = r.status; throw err;
+        }
+        return j;
+      });
+    }).catch(function(e){
+      // 管理面未启用 / 被限流时给出明确下一步，而不是只弹原始错误。
+      if (e.status === 503) toast("管理接口未启用：请用 DOUBAO_ADMIN_PASSWORD 设置管理密码后重启", "err");
+      else if (e.status === 429) toast("尝试过于频繁，请稍后再试", "err");
+      throw e;
+    });
+  }
+  function el(tag, cls, text){
+    var n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (text !== undefined && text !== null) n.textContent = String(text);
+    return n;
+  }
+  function cell(text, cls){ return el("td", cls, text); }
+  function row(cells){ var r = el("tr"); cells.forEach(function(c){ r.appendChild(c); }); return r; }
+  function emptyRow(cols, text){ var c = cell(text, "muted"); c.colSpan = cols; var r = el("tr"); r.appendChild(c); return r; }
+  function pill(text, cls){ return el("span", "badge " + (cls||""), text); }
+  function btn(label, cls, fn){
+    var b = el("button", "btn " + (cls||""), label);
+    b.type = "button"; b.onclick = fn; return b;
+  }
+  function fmtTime(s){
+    if (!s) return "—";
+    var d = new Date(s * 1000);
+    var p = function(n){ return (n<10?"0":"")+n; };
+    return d.getFullYear()+"-"+p(d.getMonth()+1)+"-"+p(d.getDate())+" "+p(d.getHours())+":"+p(d.getMinutes())+":"+p(d.getSeconds());
+  }
+  function fmtNum(n){ return (n===undefined||n===null) ? "—" : Number(n).toLocaleString(); }
+  function setHealth(cls, text){
+    ["#health", "#healthTop"].forEach(function(sel){
+      var e = $(sel); if (!e) return;
+      e.className = "badge " + (cls||"");
+      e.textContent = "";
+      e.appendChild(el("i", "dot"));
+      e.appendChild(el("span", null, text));
+    });
+  }
+  function statusPill(a){
+    if (!a.enabled) return pill("已停用");
+    return pill(a.status === "ok" ? "ok" : (a.status || "error"), a.status === "ok" ? "ok" : "err");
+  }
+  function showTab(name){
+    S.active = name;
+    $$(".tab").forEach(function(s){ s.classList.toggle("on", s.id === "tab-" + name); });
+    $$("#nav button").forEach(function(b){ b.classList.toggle("on", b.dataset.tab === name); });
+    $("#sidebar").classList.remove("open");
+    $("#scrim").classList.remove("show");
+    window.scrollTo({ top: 0, behavior: "instant" });
+    loadTab(name);
+  }
+  function loadTab(name){
+    if (name === "overview" || name === "accounts" || name === "keys" || name === "settings") loadState();
+    if (name === "models") { loadState(); loadSkills(); }
+    if (name === "rewards") loadRewards();
+    if (name === "conversations") loadConversations(0);
+    if (name === "logs") loadLogs();
+  }
+
+  // ---------- 概览 / 账号 / 密钥 / 设置 ----------
+  function loadState(){
+    return api("/admin/api/state").then(function(d){
+      S.state = d;
+      renderOverview(d);
+      renderAccounts(d);
+      renderKeys(d);
+      renderModels(d.models || []);
+      renderSettings(d.settings || {});
+      $("#accountsMeta").textContent = (d.accounts||[]).length + " 个账号";
+      updatePendingBadge(d.accounts || []);
+      $("#modelsMeta").textContent = (d.models||[]).length + " 个模型";
+    }).catch(function(e){ toast("状态加载失败：" + e.message, "err"); });
+  }
+  function loadHealth(){
+    fetch("/health").then(function(r){ return r.json(); }).then(function(h){
+      S.health = h;
+      var ready = h.ready || 0, total = h.accounts || 0;
+      setHealth(total > 0 && ready > 0 ? "ok" : (total === 0 ? "warn" : "err"),
+        "账号 " + ready + "/" + total + " 就绪 · 模型 " + (h.models||0));
+      if (S.state) renderWarnings();
+    }).catch(function(){ setHealth("err", "不可达"); });
+  }
+  function loadMeta(){
+    api("/v1/capabilities").then(function(c){
+      var up = c.upstream || {};
+      $("#upstream").textContent = "上游 " + (up.app_id || "—") + " · v" + (up.version_code || "—");
+      S.capabilities = c;
+      renderRuntime();
+    }).catch(function(){ $("#upstream").textContent = "上游版本需管理密码/密钥"; });
+  }
+  function renderOverview(d){
+    var s = d.stats || {};
+    var accts = d.accounts || [];
+    var ready = accts.filter(function(a){ return a.enabled && a.status === "ok"; }).length;
+    var kpis = [
+      ["账号（就绪/总）", ready + " / " + accts.length, "上游凭据池"],
+      ["API 密钥", (d.keys||[]).length, "未签发时允许裸调"],
+      ["总请求", fmtNum(s.total_requests||0), "网关累计"],
+      ["失败请求", fmtNum(s.failed_requests||0), "仅上游故障"],
+      ["客户端断开", fmtNum(s.canceled_requests||0), "不计入失败"],
+      ["业务错误", fmtNum(s.business_errors||0), "上游业务/配置"],
+      ["输出字符", fmtNum(s.total_chars_out||0), "累计"],
+      ["本次启动", fmtTime((d.meta||{}).booted_at || s.started_at), "进程启动"]
+    ];
+    var box = $("#kpis"); box.textContent = "";
+    kpis.forEach(function(k){
+      var c = el("div", "kpi");
+      c.appendChild(el("div", "k", k[0]));
+      c.appendChild(el("div", "v", k[1]));
+      c.appendChild(el("div", "s", k[2]));
+      box.appendChild(c);
+    });
+    renderWarnings(d);
+    renderRuntime();
+  }
+  // renderWarnings 把 /health 的告警转成顶部提示条。
+  function renderWarnings(d){
+    var box = $("#healthWarn"); if (!box) return;
+    var warns = (S.health && S.health.warnings) || [];
+    if (!warns.length) { box.style.display = "none"; box.textContent = ""; return; }
+    box.style.display = "";
+    box.textContent = "";
+    warns.forEach(function(w){
+      var line = el("div", "row");
+      line.appendChild(pill(w.code, "warn"));
+      line.appendChild(el("span", "", w.message || ""));
+      box.appendChild(line);
+    });
+  }
+  function renderRuntime(){
+    var body = $("#runtimeBody"); if (!body) return;
+    body.textContent = "";
+    var st = (S.state && S.state.settings) || {};
+    var cap = S.capabilities || {};
+    var up = cap.upstream || {};
+    var kv = [
+      ["App ID", up.app_id || "—"],
+      ["版本", up.version_code || "—"],
+      ["PC / Runtime", (up.pc_version || "—") + " / " + (up.runtime_version || "—")],
+      ["自动签到", st.auto_checkin ? "开启" : "关闭"],
+      ["自动领取", st.auto_claim_tasks ? "开启" : "关闭"],
+      ["自动做任务", st.auto_do_tasks ? ("开启 · 上限 " + (st.auto_task_limit||0)) : "关闭"],
+      ["签到复查", st.retry_pending_checkin ? "开启（每小时）" : "关闭"]
+    ];
+    kv.forEach(function(p){
+      body.appendChild(el("div", "k", p[0]));
+      body.appendChild(el("div", "mono", p[1]));
+    });
+    $("#runtimeMeta").textContent = "Chromium " + (up.chromium || "—");
+  }
+  function renderModels(models){
+    [["models", models], ["modelsTab", models]].forEach(function(pair){
+      var tb = $("#" + pair[0]); if (!tb) return;
+      tb.textContent = "";
+      if (!pair[1].length) { tb.appendChild(emptyRow(6, "无模型")); return; }
+      pair[1].forEach(function(m){
+        tb.appendChild(row([
+          cell(m.id, "mono"), cell(m.name), cell(m.think_level, "mono"),
+          cell(m.skill || "—", "mono"), cell(fmtNum(m.context), "mono"), cell(m.description, "muted")
+        ]));
+      });
+    });
+  }
+  // updatePendingBadge 把「待确认签到」数量同步到侧边栏角标。
+  //
+  // 角标只做提醒：数量为 0 时隐藏；具体哪几个账号在账号池的「待确认签到」列里。
+  // 用 data-pending-checkin 标记而不是固定 id，新增入口只需在按钮里加同一个属性。
+  function updatePendingBadge(accts){
+    var n = (accts||[]).filter(function(a){ return a.pending_checkin_date || a.pending_checkin_at; }).length;
+    var text = n > 99 ? "99+" : String(n);
+    var title = n ? (n + " 个账号的签到待上游确认。" +
+      "在「设置」里开启「待确认签到每小时复查」后会自动补写；也可在积分页点「催办签到」立即复查。") : "";
+    $$("[data-pending-checkin]").forEach(function(b){
+      b.hidden = n === 0;
+      b.textContent = text;
+      b.title = title;
+    });
+  }
+  function renderAccounts(d){
+    var tb = $("#accounts"); tb.textContent = "";
+    var accts = d.accounts || [];
+    if (!accts.length) { tb.appendChild(emptyRow(10, "暂无账号，点击「导入本机桌面端」或手工录入")); return; }
+    accts.forEach(function(a){
+      var st = el("td"); st.appendChild(statusPill(a));
+      var ops = el("td");
+      var group = el("span", "row tight");
+      group.appendChild(btn("探活", "sm", function(){ probeOne(a.id); }));
+      group.appendChild(btn(a.enabled ? "停用" : "启用", "sm", function(){ accountOp("toggle", {id:a.id}); }));
+      if (a.failures > 0) group.appendChild(btn("清错", "sm", function(){ accountOp("clear-errors", {id:a.id}); }));
+      group.appendChild(btn("删除", "sm danger", function(){
+        if (confirm("确定删除账号 " + a.name + "？")) accountOp("remove", {id:a.id});
+      }));
+      ops.appendChild(group);
+      var r = row([
+        cell(a.name), cell(a.source || "—", "muted"), cell(a.session || "—", "mono"), st,
+        expiryCell(a), cell(a.last_checkin_date || "—", "mono"),
+        pendingCheckinCell(a),
+        cell(a.failures || 0, "mono"), cell(fmtTime(a.last_used), "muted"), ops
+      ]);
+      if (a.last_err) r.title = a.last_err;
+      tb.appendChild(r);
+    });
+  }
+  // pendingCheckinCell 渲染「待确认签到」列。
+  //
+  // 上游把签到奖励做成异步发放（biz_code=3），此时账号侧会留下
+  // pending_checkin_* 记录，由后台复查队列每小时重试一次。
+  function pendingCheckinCell(a){
+    var td = el("td");
+    if (!a.pending_checkin_date && !a.pending_checkin_at) {
+      td.className = "muted"; td.textContent = "—"; return td;
+    }
+    var tries = a.pending_checkin_tries || 0;
+    td.appendChild(pill("确认中 · " + tries + " 次", "warn"));
+    td.title = "待确认日期：" + (a.pending_checkin_date || "—") +
+      "\n最近尝试：" + fmtTime(a.pending_checkin_at) +
+      "\n开启「待确认签到每小时复查」后会自动补写签到结果";
+    return td;
+  }
+  // expiryCell 渲染凭据剩余有效期（来自 sid_guard 推算）。
+  function expiryCell(a){
+    var td = el("td");
+    if (a.session_days_left === undefined) { td.className = "muted"; td.textContent = "—"; return td; }
+    var d = a.session_days_left;
+    if (d < 0) { td.appendChild(pill("已过期", "err")); }
+    else if (d <= 7) { td.appendChild(pill("剩 " + d + " 天", "warn")); }
+    else { td.appendChild(pill("剩 " + d + " 天", "ok")); }
+    if (a.session_expires_at) td.title = "按 sid_guard 推算：" + fmtTime(a.session_expires_at);
+    if (a.cooldown_until && a.cooldown_until * 1000 > Date.now()) {
+      td.appendChild(document.createTextNode(" "));
+      td.appendChild(pill("冷却中", "warn"));
+    }
+    return td;
+  }
+  function renderKeys(d){
+    var tb = $("#keys"); tb.textContent = "";
+    var keys = d.keys || [];
+    if (!keys.length) { tb.appendChild(emptyRow(7, "暂无密钥（未签发时 /v1 允许无密钥调用）")); return; }
+    keys.forEach(function(k){
+      var st = el("td"); st.appendChild(pill(k.enabled ? "启用" : "停用", k.enabled ? "ok" : ""));
+      var ops = el("td"); var g = el("span", "row tight");
+      g.appendChild(btn(k.enabled ? "停用" : "启用", "sm", function(){ keyOp("toggle", k.id); }));
+      g.appendChild(btn("删除", "sm danger", function(){ if (confirm("确定删除该密钥？")) keyOp("id", k.id); }));
+      ops.appendChild(g);
+      var nameCell = cell(k.name || "—");
+      nameCell.title = "id: " + (k.id || "—");
+      tb.appendChild(row([
+        cell(k.key, "mono"), nameCell, st, cell(k.requests || 0, "mono"),
+        cell(fmtTime(k.created_at), "muted"), cell(fmtTime(k.last_used), "muted"), ops
+      ]));
+    });
+  }
+  function renderSettings(st){
+    $("#sTimeout").value = st.request_timeout_sec || 300;
+    $("#sOverall").value = st.overall_timeout_sec || 600;
+    $("#sRetries").value = st.max_retries || 3;
+    $("#sLogKeep").value = st.log_keep || 500;
+    $("#sCors").value = st.cors_origin || "";
+    $("#sProxies").value = st.trusted_proxies || "";
+    $("#sLoopback").checked = st.admin_loopback_only !== false;
+    $("#sWarnDays").value = st.session_warn_days || 14;
+    $("#sConcurrency").value = st.max_concurrent_per_account || 0;
+    $("#sRateLimit").value = st.rate_limit_per_key || 0;
+    $("#sTools").value = st.tools_policy || "reject";
+    $("#sAliases").value = JSON.stringify(st.model_aliases || {}, null, 2);
+    $("#sAutoCheckin").checked = !!st.auto_checkin;
+    $("#sAutoClaim").checked = !!st.auto_claim_tasks;
+    $("#sAutoTasks").checked = !!st.auto_do_tasks;
+    $("#sRetryCheckin").checked = !!st.retry_pending_checkin;
+    $("#sTaskLimit").value = st.auto_task_limit || 0;
+  }
+
+  // ---------- 技能 ----------
+  function loadSkills(){
+    return api("/v1/skills").then(function(d){
+      S.skills = d.data || [];
+      var tb = $("#skills"); tb.textContent = "";
+      $("#skillsMeta").textContent = S.skills.length + " 个技能";
+      if (!S.skills.length) { tb.appendChild(emptyRow(5, "无技能")); return; }
+      S.skills.forEach(function(s){
+        tb.appendChild(row([
+          cell(s.skill_type, "mono"), cell(s.name || "—"),
+          cell((s.aliases||[]).join(" / ") || "—", "muted"),
+          cell(s.default_prompt || "—", "mono trunc"), cell(s.model || "—", "mono")
+        ]));
+      });
+    }).catch(function(e){ toast("技能加载失败：" + e.message, "err"); });
+  }
+
+  // ---------- 积分 / 任务 ----------
+  function loadRewards(){ loadCredits(); loadTasks(); }
+  function loadCredits(){
+    return api("/v1/credits").then(function(c){
+      S.credits = c;
+      renderCredits(c);
+    }).catch(function(e){ $("#creditBody").textContent = "加载失败：" + e.message; });
+  }
+  function renderCredits(c){
+    var credit = c.credit || {};
+    var last = c.account_last_checkin || {};
+    var kp = $("#rewardKpis"); kp.textContent = "";
+    [
+      ["积分余额", fmtNum(credit.total_credit_num || 0), credit.credit_desc_text || "可用于付费能力"],
+      ["今日签到", last.last_checkin_date || "—",
+        last.pending_checkin ? ("确认中 · 已试 " + (last.pending_checkin.attempts || 0) + " 次")
+          : (last.last_reward ? ("+" + last.last_reward + " 额度") : "未签到")],
+      ["可选任务", (c.optional_tasks||[]).length, "每日登录等"],
+      ["自动任务", (S.state && S.state.settings && S.state.settings.auto_do_tasks) ? "开启" : "关闭", "设置中可开关"]
+    ].forEach(function(k){
+      var b = el("div", "kpi");
+      b.appendChild(el("div", "k", k[0]));
+      b.appendChild(el("div", "v", k[1]));
+      b.appendChild(el("div", "s", k[2]));
+      kp.appendChild(b);
+    });
+    var body = $("#creditBody"); body.textContent = "";
+    var row1 = el("div", "row");
+    row1.appendChild(el("span", "muted", "积分余额"));
+    row1.appendChild(el("strong", "mono", fmtNum(credit.total_credit_num || 0)));
+    if (credit.credit_text) row1.appendChild(el("span", "faint", credit.credit_text));
+    body.appendChild(row1);
+    if ((c.optional_tasks||[]).length) {
+      var table = el("table");
+      var thead = el("thead"); var htr = el("tr");
+      ["任务", "说明", "状态", "操作"].forEach(function(x){ htr.appendChild(el("th", null, x)); });
+      thead.appendChild(htr); table.appendChild(thead);
+      var tbody = el("tbody");
+      c.optional_tasks.forEach(function(t){
+        var st = t.button_status ? pill("可领取", "ok") : pill("—");
+        var tr = el("tr");
+        tr.appendChild(cell(t.title || ("task " + t.task_type)));
+        tr.appendChild(cell(t.description || "—", "muted"));
+        tr.appendChild((function(){ var td = el("td"); td.appendChild(st); return td; })());
+        tr.appendChild(cell(t.button_text || "—", "mono"));
+        tbody.appendChild(tr);
+      });
+      table.appendChild(tbody);
+      body.appendChild(table);
+    }
+    if (c.credit_rule_link && c.credit_rule_link.schema) {
+      var hint = el("div", "hint");
+      hint.appendChild(el("span", null, "规则：" + (c.credit_rule_link.text || "积分规则")));
+      body.appendChild(hint);
+    }
+  }
+  function loadTasks(){
+    return api("/v1/tasks").then(function(d){
+      S.tasks = d.data || {};
+      renderTasks(S.tasks);
+    }).catch(function(e){ toast("任务加载失败：" + e.message, "err"); });
+  }
+  function rewardText(rewards){
+    if (!rewards || !rewards.length) return "—";
+    return rewards.map(function(r){ return "+" + r.reward_amount + " " + (r.reward_type || ""); }).join(" / ");
+  }
+  function renderTasks(d){
+    var tb = $("#tasks"); tb.textContent = "";
+    var tasks = d.tasks || [];
+    if (!tasks.length) { tb.appendChild(emptyRow(6, "暂无任务")); }
+    tasks.forEach(function(t){
+      var st = el("td"); st.appendChild(pill(t.status_name || String(t.task_status), t.task_status === 2 ? "ok" : (t.task_status === 3 ? "" : "warn")));
+      var ops = el("td"); var g = el("span", "row tight");
+      if (t.claimable) g.appendChild(btn("领取", "sm primary", function(){ claimTask(t); }));
+      ops.appendChild(g);
+      tb.appendChild(row([
+        cell(t.campaign_code, "mono"), cell(t.title || "—"), st,
+        cell(rewardText(t.rewards), "mono"), cell(t.claimable ? "是" : "否", "mono"), ops
+      ]));
+    });
+    var mb = $("#milestones"); mb.textContent = "";
+    var ms = d.milestones || [];
+    $("#milestoneMeta").textContent = "累计额度 " + fmtNum(d.total_amount || 0);
+    if (!ms.length) mb.appendChild(emptyRow(6, "暂无里程碑"));
+    ms.forEach(function(t){
+      var st = el("td"); st.appendChild(pill(t.status_name || String(t.task_status), t.claimable ? "ok" : "warn"));
+      var ops = el("td"); var g = el("span", "row tight");
+      if (t.claimable) g.appendChild(btn("领取", "sm primary", function(){ claimTask(t); }));
+      ops.appendChild(g);
+      mb.appendChild(row([
+        cell(t.campaign_code, "mono"), cell(fmtNum(t.milestone_threshold), "mono"), st,
+        cell(rewardText(t.rewards), "mono"), cell(t.claimable ? "是" : "否", "mono"), ops
+      ]));
+    });
+  }
+  function doCheckin(){
+    var b = $("#doCheckin"); b.disabled = true;
+    api("/v1/checkin", {method:"POST", body:{}}).then(function(d){
+      var r = d.result || {};
+      if (r.pending) {
+        // 上游已受理、奖励异步确认中：此时不能当成功也不能当失败。
+        toast("签到已提交，上游确认中。\n已登记到复查队列；在设置里开启「待确认签到每小时复查」后会自动补写结果。", "");
+      } else if (r.checked_in) {
+        toast("签到成功：+" + (r.reward_amount || 0) + " 额度（连续 " + (r.continuous_days || 0) + " 天）", "ok");
+      } else {
+        toast("签到未完成：上游未确认（可稍后重试）", "");
+      }
+      loadRewards(); loadState();
+    }).catch(function(e){ toast("签到失败：" + e.message, "err"); }).then(function(){ b.disabled = false; });
+  }
+  function retryCheckin(){
+    var b = $("#retryCheckin"); b.disabled = true;
+    api("/admin/api/checkin/retry", {method:"POST", body:{}}).then(function(d){
+      if (!d.enabled) {
+        toast("复查队列未开启：请先在「设置」里打开「待确认签到每小时复查」", "err");
+        return;
+      }
+      var n = d.remain_count || 0;
+      toast(n ? ("复查完成：" + n + " 个账号仍在上游确认中") : "复查完成：没有待确认的签到", n ? "" : "ok");
+      loadState(); loadRewards();
+    }).catch(function(e){ toast("复查失败：" + e.message, "err"); })
+      .then(function(){ b.disabled = false; });
+  }
+  function claimTask(t){
+    api("/v1/tasks/claim", {method:"POST", body:{
+      task_id: t.instance_task_id || "",
+      campaign_group_code: t.campaign_group_code || (S.tasks && S.tasks.campaign_code) || "pc_incentive_task_mvp_v3",
+      campaign_item_code: t.campaign_code
+    }}).then(function(){ toast("领取成功", "ok"); loadRewards(); })
+      .catch(function(e){ toast("领取失败：" + e.message, "err"); });
+  }
+  function claimCompleted(){
+    var b = $("#claimCompleted"); b.disabled = true;
+    api("/v1/tasks/claim-completed", {method:"POST", body:{}}).then(function(d){
+      toast("已领取 " + (d.claimed_count || 0) + " 个奖励", d.claimed_count ? "ok" : "");
+      loadRewards();
+    }).catch(function(e){ toast("领取失败：" + e.message, "err"); }).then(function(){ b.disabled = false; });
+  }
+  function runTasks(){
+    var n = parseInt($("#runTaskLimit").value, 10) || 3;
+    var b = $("#runTasks"); b.disabled = true;
+    toast("正在尝试执行任务，最长约 3 分钟/个…", "");
+    api("/v1/tasks/run", {method:"POST", body:{max_tasks:n}}).then(function(d){
+      var claimed = d.claimed_count || 0;
+      var attempted = (d.results||[]).length;
+      toast("任务执行完成：尝试 " + attempted + " 个，领取 " + claimed + " 个" +
+        (d.cleaned_temp_files ? ("，清理临时文件 " + d.cleaned_temp_files + " 个") : ""), "ok");
+      loadRewards();
+    }).catch(function(e){ toast("任务执行失败：" + e.message, "err"); }).then(function(){ b.disabled = false; });
+  }
+  function loadHistory(){
+    api("/v1/credits/history?size=20").then(function(d){
+      var items = d.data || [];
+      var body = $("#creditBody");
+      var old = body.querySelector("table.history"); if (old) old.remove();
+      var table = el("table", "history");
+      var thead = el("thead"); var htr = el("tr");
+      ["时间", "类型", "变动", "余额", "备注"].forEach(function(x){ htr.appendChild(el("th", null, x)); });
+      thead.appendChild(htr); table.appendChild(thead);
+      var tbody = el("tbody");
+      if (!items.length) tbody.appendChild(emptyRow(5, "暂无积分流水"));
+      items.forEach(function(it){
+        tbody.appendChild(row([
+          cell(it.create_time ? fmtTime(it.create_time) : "—", "muted"),
+          cell(it.transaction_type || it.type || "—", "mono"),
+          cell(it.amount !== undefined ? it.amount : (it.credit_num || "—"), "mono"),
+          cell(it.balance !== undefined ? it.balance : "—", "mono"),
+          cell(it.description || it.title || "—", "muted")
+        ]));
+      });
+      table.appendChild(tbody);
+      body.appendChild(table);
+    }).catch(function(e){ toast("流水加载失败：" + e.message, "err"); });
+  }
+
+  // ---------- 会话 ----------
+  function loadConversations(offset){
+    S.convOffset = Math.max(0, offset || 0);
+    var limit = parseInt($("#convLimit").value, 10) || 20;
+    api("/v1/conversations?limit=" + limit + "&offset=" + S.convOffset).then(function(d){
+      var list = d.data || [];
+      $("#convMeta").textContent = "偏移 " + S.convOffset + " · " + (d.has_more ? "还有更多" : "到底了");
+      var tb = $("#conversations"); tb.textContent = "";
+      if (!list.length) tb.appendChild(emptyRow(6, "暂无会话"));
+      list.forEach(function(c){
+        var ops = el("td"); var g = el("span", "row tight");
+        g.appendChild(btn("重命名", "sm", function(){
+          var name = prompt("新的会话名称", c.name || "");
+          if (name) convAction(c.id, "rename", name);
+        }));
+        g.appendChild(btn(c.pinned ? "取消置顶" : "置顶", "sm", function(){ convAction(c.id, c.pinned ? "unpin" : "pin"); }));
+        g.appendChild(btn("清空", "sm", function(){ if (confirm("清空该会话消息？")) convAction(c.id, "clear"); }));
+        g.appendChild(btn("归档", "sm danger", function(){ if (confirm("归档该会话？")) convAction(c.id, "archive"); }));
+        ops.appendChild(g);
+        tb.appendChild(row([
+          cell(c.id, "mono"), cell(c.name || "—"), cell(c.conversation_type || "—", "mono"),
+          cell(fmtTime(c.update_time), "muted"), cell(c.pinned ? "是" : "否", "mono"), ops
+        ]));
+      });
+      $("#convPrev").disabled = S.convOffset <= 0;
+      $("#convNext").disabled = !d.has_more;
+    }).catch(function(e){ toast("会话加载失败：" + e.message, "err"); });
+  }
+  function convAction(id, action, name){
+    var p;
+    if (action === "rename") p = api("/v1/conversations/" + encodeURIComponent(id), {method:"PATCH", body:{name:name}});
+    else if (action === "archive") p = api("/v1/conversations/" + encodeURIComponent(id), {method:"DELETE"});
+    else p = api("/v1/conversations/" + encodeURIComponent(id) + "/" + action, {method:"POST", body:{}});
+    p.then(function(){ toast("会话操作完成", "ok"); loadConversations(S.convOffset); })
+      .catch(function(e){ toast("会话操作失败：" + e.message, "err"); });
+  }
+
+  // ---------- 日志 ----------
+  function loadLogs(){
+    var limit = $("#logLimit").value;
+    api("/admin/api/logs?limit=" + limit).then(function(d){
+      renderLogs(d.logs || []);
+    }).catch(function(e){ toast("日志加载失败：" + e.message, "err"); });
+  }
+  function renderLogs(logs){
+    var model = ($("#logModel").value || "").trim().toLowerCase();
+    var status = ($("#logStatus").value || "").trim();
+    if (model) logs = logs.filter(function(l){ return (l.model||"").toLowerCase().indexOf(model) >= 0; });
+    if (status) logs = logs.filter(function(l){ return String(l.status) === status; });
+    $("#logsMeta").textContent = logs.length + " 条";
+    var tb = $("#logs"); tb.textContent = "";
+    if (!logs.length) { tb.appendChild(emptyRow(9, "暂无日志")); return; }
+    logs.slice().reverse().forEach(function(l){
+      tb.appendChild(row([
+        cell(fmtTime(l.time), "muted"), cell(l.model, "mono"), cell(l.stream ? "是" : "否", "mono"),
+        cell(l.status, "mono"), cell((l.latency_ms||0) + "ms", "mono"),
+        cell((l.prompt_len||0) + " / " + (l.output_len||0), "mono"),
+        cell(l.account || "—", "mono"), cell(l.key || "—", "mono"),
+        cell(l.err || "—", "muted trunc")
+      ]));
+    });
+  }
+  function toggleLogLive(){
+    var b = $("#logLive");
+    if (S.logTimer) { clearInterval(S.logTimer); S.logTimer = null; b.setAttribute("aria-pressed","false"); b.textContent = "实时"; return; }
+    b.setAttribute("aria-pressed","true"); b.textContent = "停止实时";
+    S.logTimer = setInterval(function(){ if (S.active === "logs") loadLogs(); }, 5000);
+  }
+
+  // ---------- 操作 ----------
+  function accountOp(action, body){
+    body.action = action;
+    api("/admin/api/accounts", {method:"POST", body:body}).then(function(){ toast("操作完成", "ok"); loadState(); })
+      .catch(function(e){ toast("操作失败：" + e.message, "err"); });
+  }
+  function probeOne(id){ api("/admin/api/checkin", {method:"POST", body:{id:id}}).then(function(){ toast("探活完成", "ok"); loadState(); }).catch(function(e){ toast("探活失败：" + e.message, "err"); }); }
+  function importLocal(){
+    api("/admin/api/accounts", {method:"POST", body:{action:"import"}}).then(function(d){
+      toast("导入完成，共 " + (d.count || 0) + " 个账号", "ok"); loadState();
+    }).catch(function(e){ toast("导入失败：" + e.message, "err"); });
+  }
+  function addManual(){
+    var cookies = $("#manualCookies").value.trim();
+    if (!cookies) { toast("请粘贴 Cookie", "err"); return; }
+    var body = {action:"manual", name:$("#manualName").value.trim(), cookies:cookies,
+      device_id:$("#manualDevice").value.trim(), web_id:$("#manualWeb").value.trim(),
+      iid:$("#manualIid").value.trim(), app_id:$("#manualAppId").value.trim()};
+    api("/admin/api/accounts", {method:"POST", body:body}).then(function(d){
+      toast(d.new ? "账号已添加" : "账号已更新", "ok"); loadState();
+    }).catch(function(e){ toast("添加失败：" + e.message, "err"); });
+  }
+  function keyOp(action, key){
+    api("/admin/api/keys?" + action + "=" + encodeURIComponent(key), {method:"DELETE"}).then(function(){ toast("操作完成", "ok"); loadState(); })
+      .catch(function(e){ toast("操作失败：" + e.message, "err"); });
+  }
+  function addKey(){
+    api("/admin/api/keys", {method:"POST", body:{name:$("#keyName").value.trim()}}).then(function(d){
+      var key = d.key || "";
+      if (navigator.clipboard && key) navigator.clipboard.writeText(key).catch(function(){});
+      toast("密钥已创建（已尝试复制）：\n" + key, "ok"); loadState();
+    }).catch(function(e){ toast("创建失败：" + e.message, "err"); });
+  }
+  function saveSettings(){
+    var aliases;
+    try { aliases = JSON.parse($("#sAliases").value || "{}"); }
+    catch(e){ toast("模型别名不是合法 JSON", "err"); return; }
+    var body = {
+      request_timeout_sec: parseInt($("#sTimeout").value,10) || 300,
+      overall_timeout_sec: parseInt($("#sOverall").value,10) || 600,
+      max_retries: parseInt($("#sRetries").value,10) || 3,
+      log_keep: parseInt($("#sLogKeep").value,10) || 500,
+      cors_origin: $("#sCors").value.trim(),
+      trusted_proxies: $("#sProxies").value.trim(),
+      admin_loopback_only: $("#sLoopback").checked,
+      session_warn_days: parseInt($("#sWarnDays").value,10) || 14,
+      max_concurrent_per_account: parseInt($("#sConcurrency").value,10) || 0,
+      rate_limit_per_key: parseInt($("#sRateLimit").value,10) || 0,
+      tools_policy: $("#sTools").value,
+      model_aliases: aliases,
+      auto_checkin: $("#sAutoCheckin").checked,
+      auto_claim_tasks: $("#sAutoClaim").checked,
+      auto_do_tasks: $("#sAutoTasks").checked,
+      retry_pending_checkin: $("#sRetryCheckin").checked,
+      auto_task_limit: parseInt($("#sTaskLimit").value,10) || 0
+    };
+    var p = $("#sPw").value.trim(); if (p) body.admin_password = p;
+    api("/admin/api/settings", {method:"POST", body:body}).then(function(){
+      toast("设置已保存", "ok"); $("#sPw").value = ""; loadState();
+    }).catch(function(e){ toast("保存失败：" + e.message, "err"); });
+  }
+  function clearStats(){
+    if (!confirm("重置统计与日志？")) return;
+    api("/admin/api/stats", {method:"DELETE"}).then(function(){ toast("统计已重置", "ok"); loadState(); loadLogs(); })
+      .catch(function(e){ toast("重置失败：" + e.message, "err"); });
+  }
+  // startPendingBadgePoll 独立轮询「待确认签到」数量。
+  //
+  // 后台的复查队列每小时一次，角标若只跟着当前页签刷新就会长期停留在旧值。
+  // 这里只拉状态并更新角标，**不重绘**表单与表格：避免打断正在编辑的设置项。
+  function startPendingBadgePoll(){
+    setInterval(function(){
+      if (document.hidden) return; // 后台页签不打扰上游
+      api("/admin/api/state").then(function(d){
+        S.state = d;
+        updatePendingBadge(d.accounts || []);
+      }).catch(function(){});
+    }, 60000);
+  }
+  function startQr(){
+    api("/admin/api/login/qrcode", {method:"POST", body:{}}).then(function(d){
+      $("#qrPanel").style.display = "";
+      $("#qrImg").src = d.qrcode || "";
+      $("#qrStatus").textContent = "等待扫码…";
+      var sid = d.session_id;
+      if (S.qrTimer) clearInterval(S.qrTimer);
+      S.qrTimer = setInterval(function(){
+        api("/admin/api/login/qrcode/poll", {method:"POST", body:{session_id:sid}}).then(function(r){
+          $("#qrStatus").textContent = "状态：" + (r.status || "waiting");
+          if (r.status === "confirmed") {
+            clearInterval(S.qrTimer); S.qrTimer = null;
+            toast("登录成功，账号已入库", "ok"); $("#qrPanel").style.display = "none"; loadState();
+          } else if (r.status === "expired") {
+            clearInterval(S.qrTimer); S.qrTimer = null;
+            toast("二维码已过期，请重新生成", "warn");
+          }
+        }).catch(function(){});
+      }, 2000);
+    }).catch(function(e){ toast("二维码获取失败：" + e.message, "err"); });
+  }
+  function stopQr(){
+    if (S.qrTimer) { clearInterval(S.qrTimer); S.qrTimer = null; }
+    $("#qrPanel").style.display = "none";
+  }
+
+  // ---------- 主题 / 密码 / 初始化 ----------
+  function applyTheme(theme){
+    document.documentElement.setAttribute("data-theme", theme);
+    localStorage.setItem("d2a_theme", theme);
+    $("#themeToggle").textContent = theme === "dark" ? "☾" : "☀";
+  }
+  function init(){
+    var theme = localStorage.getItem("d2a_theme") || "dark";
+    applyTheme(theme);
+    $("#pw").value = localStorage.getItem("d2a_pw") || "";
+    $("#savePw").onclick = function(){ localStorage.setItem("d2a_pw", pw()); toast("已记住管理密码（仅本机浏览器）", "ok"); };
+    $("#themeToggle").onclick = function(){ applyTheme(document.documentElement.getAttribute("data-theme") === "dark" ? "light" : "dark"); };
+    $("#refresh").onclick = function(){ loadHealth(); loadState(); loadMeta(); loadTab(S.active); };
+    $("#refreshAll").onclick = function(){ loadHealth(); loadState(); loadMeta(); loadTab(S.active); };
+    $("#navToggle").onclick = function(){ $("#sidebar").classList.toggle("open"); $("#scrim").classList.toggle("show"); };
+    $("#scrim").onclick = function(){ $("#sidebar").classList.remove("open"); $("#scrim").classList.remove("show"); };
+    $$("#nav button").forEach(function(b){ b.onclick = function(){ showTab(b.dataset.tab); }; });
+
+    $("#importLocal").onclick = importLocal;
+    $("#probeAll").onclick = function(){ api("/admin/api/checkin", {method:"POST", body:{}}).then(function(){ toast("探活完成", "ok"); loadState(); }).catch(function(e){ toast("探活失败：" + e.message, "err"); }); };
+    $("#addManual").onclick = addManual;
+    $("#qrLogin").onclick = startQr; $("#qrCancel").onclick = stopQr;
+    $("#addKey").onclick = addKey;
+
+    $("#refreshSkills").onclick = loadSkills;
+    $("#refreshRewards").onclick = loadRewards;
+    $("#doCheckin").onclick = doCheckin;
+    $("#retryCheckin").onclick = retryCheckin;
+    $("#claimCompleted").onclick = claimCompleted;
+    $("#runTasks").onclick = runTasks;
+    $("#loadHistory").onclick = loadHistory;
+
+    $("#refreshConvs").onclick = function(){ loadConversations(0); };
+    $("#convPrev").onclick = function(){ loadConversations(S.convOffset - (parseInt($("#convLimit").value,10)||20)); };
+    $("#convNext").onclick = function(){ loadConversations(S.convOffset + (parseInt($("#convLimit").value,10)||20)); };
+    $("#convLimit").onchange = function(){ loadConversations(0); };
+
+    $("#reloadLogs").onclick = loadLogs;
+    $("#logLive").onclick = toggleLogLive;
+    $("#logModel").oninput = loadLogs; $("#logStatus").oninput = loadLogs; $("#logLimit").onchange = loadLogs;
+    $("#clearLogs").onclick = function(){ if (!confirm("清空日志？")) return; api("/admin/api/logs", {method:"DELETE"}).then(function(){ toast("日志已清空", "ok"); loadLogs(); }).catch(function(e){ toast("清空失败：" + e.message, "err"); }); };
+
+    $("#saveSettings").onclick = saveSettings;
+    $("#clearStats").onclick = clearStats;
+
+    loadHealth(); loadMeta();
+    showTab("overview"); // 内部会 loadState()
+    startPendingBadgePoll();
+  }
+  init();
+})();
+</script>
+</body>
+</html>

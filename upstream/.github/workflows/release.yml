@@ -1,0 +1,93 @@
+name: release
+
+# 打 tag 即发布：git push origin v0.2.0 → 构建三平台产物 + 校验和 → 建 Release。
+# 手工发布仍可用 `make release VERSION=vX.Y.Z`（本地打 annotated tag 后推送）。
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write # 创建 / 更新 Release 需要写权限
+
+concurrency:
+  group: release-${{ github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: build & publish
+    runs-on: ubuntu-latest
+    steps:
+      # 固定到 commit SHA（而非可变的 v4 标签），避免上游标签被改写后投毒。
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          # make dist 用 git describe --tags 取版本号，需要完整历史与 tag。
+          fetch-depth: 0
+          # 不把 token 留在 .git/config：发布任务会向上传附件。
+          persist-credentials: false
+
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
+        with:
+          go-version-file: go.mod
+          # 发布链路不恢复依赖缓存：作用域共享的缓存可能被投毒，
+          # 而本项目零第三方依赖，冷启动构建代价可忽略。
+          cache: false
+
+      # 与 scripts/release.sh 一致的守卫：CHANGELOG 必须有对应小节。
+      - name: Verify CHANGELOG section
+        run: |
+          ver="${GITHUB_REF_NAME#v}"
+          if ! grep -q "^## \[${ver}\]" CHANGELOG.md; then
+            echo "::error::CHANGELOG.md 缺少 [${ver}] 小节，先补变更记录再发版"
+            exit 1
+          fi
+
+      - name: gofmt / vet / test
+        run: |
+          out="$(gofmt -l .)"
+          if [ -n "$out" ]; then
+            echo "::error::以下文件未格式化"
+            echo "$out"
+            exit 1
+          fi
+          go vet ./...
+          go test -race -count=1 ./...
+
+      - name: Build dist
+        run: make dist
+
+      - name: Checksums
+        working-directory: dist
+        run: |
+          sha256sum doubao2api-* > SHA256SUMS
+          cat SHA256SUMS
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="${GITHUB_REF_NAME}"
+          ver="${tag#v}"
+
+          # 直接从 CHANGELOG 取该版本小节作为 release notes：不依赖 annotated tag
+          # （checkout 可能把 tag 解析成 commit），且与 scripts/release.sh 用同一来源。
+          awk -v ver="$ver" '
+            index($0, "## [" ver "]") { flag = 1; next }
+            flag && /^## / { exit }
+            flag { n++; line[n] = $0; if (NF) last = n }
+            END { for (i = 1; i <= last; i++) print line[i] }
+          ' CHANGELOG.md > release-notes.md
+
+          if gh release view "$tag" >/dev/null 2>&1; then
+            echo "Release $tag 已存在：覆盖附件并同步说明"
+            gh release upload "$tag" dist/* --clobber
+            gh release edit "$tag" --notes-file release-notes.md
+          else
+            gh release create "$tag" dist/* \
+              --verify-tag \
+              --title "Doubao2API ${tag}" \
+              --notes-file release-notes.md
+          fi
+
+          echo "::notice::https://github.com/${GITHUB_REPOSITORY}/releases/tag/${tag}"

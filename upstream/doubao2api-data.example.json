@@ -1,0 +1,94 @@
+{
+  "meta": {
+    "schema_version": 2,
+    "created_at": 1763000000,
+    "booted_at": 1763100000
+  },
+  "accounts": [
+    {
+      "id": "0123456789abcdef",
+      "name": "DoubaoWork/Default",
+      "source": "auto-import",
+      "cookies": {
+        "sessionid": "<占位：32 位十六进制会话 ID>",
+        "sessionid_ss": "<占位>",
+        "sid_guard": "<占位：session|<创建时间戳>|<TTL 秒>|<…>>",
+        "sid_tt": "<占位>",
+        "uid_tt": "<占位>",
+        "uid_tt_ss": "<占位>",
+        "odin_tt": "<占位>",
+        "ttwid": "<占位>",
+        "passport_csrf_token": "<占位：用于 x-tt-passport-csrf-token 头>",
+        "passport_csrf_token_default": "<占位>",
+        "LARK_SUITE_ACCESS_TOKEN": "<占位：JWT>",
+        "LARK_SUITE_DPOP": "<占位：JWT>"
+      },
+      "device_id": "700000000000001",
+      "web_id": "7600000000000000000",
+      "iid": "3800000000000001",
+      "fp": "verify_700000000000001",
+      "ms_token": "",
+      "app_id": "1044603",
+      "app_version": "2.36.15",
+      "pc_version": "2.36.15",
+      "runtime_version": "3.45.5",
+      "channel": "win",
+      "web_tab_id": "00000000-0000-4000-8000-000000000000",
+      "enabled": true,
+      "status": "ok",
+      "note": "",
+      "last_used": 0,
+      "last_err": "",
+      "failures": 0,
+      "cooldown_until": 0,
+      "last_success": 0,
+      "pending_checkin_date": "",
+      "pending_checkin_at": 0,
+      "pending_checkin_tries": 0
+    }
+  ],
+  "keys": [
+    {
+      "id": "a1b2c3d4",
+      "key_hash": "<占位：SHA-256(sk-...)，完整密钥只在创建时返回一次>",
+      "display": "sk-abc...wxyz",
+      "name": "default",
+      "enabled": true,
+      "created_at": 0,
+      "last_used": 0,
+      "requests": 0
+    }
+  ],
+  "settings": {
+    "model_aliases": {
+      "gpt-4o": "doubao"
+    },
+    "request_timeout_sec": 300,
+    "overall_timeout_sec": 600,
+    "max_retries": 3,
+    "log_keep": 500,
+    "cors_origin": "",
+    "admin_password_hash": "<占位：pbkdf2-sha256$…，不要填明文>",
+    "trusted_proxies": "",
+    "admin_loopback_only": true,
+    "session_warn_days": 14,
+    "max_concurrent_per_account": 2,
+    "rate_limit_per_key": 0,
+    "tools_policy": "reject",
+    "auto_checkin": false,
+    "auto_claim_tasks": false,
+    "auto_do_tasks": false,
+    "auto_task_limit": 3,
+    "allow_anonymous": false,
+    "retry_pending_checkin": false
+  },
+  "stats": {
+    "total_requests": 0,
+    "failed_requests": 0,
+    "canceled_requests": 0,
+    "business_errors": 0,
+    "total_chars_out": 0,
+    "started_at": 0
+  },
+  "logs": []
+}
